@@ -1,0 +1,19 @@
+node_modules/
+dist/
+build/
+*.tsbuildinfo
+.env
+.env.local
+*.log
+npm-debug.log*
+
+# Prisma
+server/prisma/dev.db
+
+# Agent local durable queue
+agent/data/
+
+# Editors / OS
+.DS_Store
+.vscode/
+.idea/

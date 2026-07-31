@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+  body {
+    @apply bg-sentinel-bg text-sentinel-text;
+  }
+  ::selection {
+    @apply bg-sentinel-accent/30;
+  }
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: #1f2a40;
+    border-radius: 999px;
+  }
+}
+
+@layer components {
+  .panel {
+    @apply bg-sentinel-panel border border-sentinel-border rounded-xl;
+  }
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-sentinel-accent text-sentinel-bg font-semibold px-4 py-2 text-sm hover:brightness-110 active:brightness-95 transition disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-sentinel-panelAlt border border-sentinel-border text-sentinel-text font-medium px-4 py-2 text-sm hover:border-sentinel-accent/50 transition disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .input {
+    @apply w-full rounded-lg bg-sentinel-panelAlt border border-sentinel-border px-3 py-2 text-sm text-sentinel-text placeholder:text-sentinel-muted focus:outline-none focus:ring-2 focus:ring-sentinel-accent/40 focus:border-sentinel-accent/60 transition;
+  }
+  .badge {
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium;
+  }
+}
