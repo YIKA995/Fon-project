@@ -1,0 +1,15 @@
+{
+  "name": "sentinel-africa-agent",
+  "version": "1.0.0",
+  "description": "Offline-capable edge collector for Sentinel Africa. Watches local security events, buffers them durably while disconnected, and syncs to the central platform once connectivity is restored.",
+  "main": "src/index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "axios": "^1.7.7",
+    "dotenv": "^16.4.5",
+    "uuid": "^9.0.1"
+  }
+}

@@ -1,0 +1,212 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  ANALYST
+  VIEWER
+}
+
+enum AssetType {
+  SERVER
+  WORKSTATION
+  FIREWALL
+  ROUTER
+  DATABASE
+  BRANCH_GATEWAY
+  ATM
+  CLOUD_SERVICE
+  IOT_DEVICE
+}
+
+enum AssetStatus {
+  HEALTHY
+  AT_RISK
+  COMPROMISED
+  OFFLINE
+}
+
+enum Severity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum AlertStatus {
+  OPEN
+  INVESTIGATING
+  RESOLVED
+  FALSE_POSITIVE
+}
+
+enum IncidentStatus {
+  OPEN
+  CONTAINED
+  RESOLVED
+  CLOSED
+}
+
+model User {
+  id            String    @id @default(uuid())
+  name          String
+  email         String    @unique
+  passwordHash  String
+  role          Role      @default(VIEWER)
+  organization  String?
+  isActive      Boolean   @default(true)
+  lastLoginAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  assignedAlerts    Alert[]        @relation("AssignedAlerts")
+  createdIncidents  Incident[]     @relation("CreatedIncidents")
+  auditLogs         AuditLog[]
+  notifications     Notification[]
+  incidentNotes     IncidentNote[]
+  refreshTokens     RefreshToken[]
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  revoked   Boolean  @default(false)
+}
+
+model Asset {
+  id           String      @id @default(uuid())
+  name         String
+  type         AssetType
+  ipAddress    String?
+  location     String?
+  ownerOrg     String?
+  criticality  Int         @default(3) // 1 (low) - 5 (critical)
+  riskScore    Float       @default(0)
+  status       AssetStatus @default(HEALTHY)
+  tags         String[]    @default([])
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  events Event[]
+  alerts Alert[]
+
+  @@index([status])
+  @@index([riskScore])
+}
+
+model Event {
+  id             String   @id @default(uuid())
+  externalId     String?  @unique // idempotency key from offline agents
+  assetId        String?
+  asset          Asset?   @relation(fields: [assetId], references: [id], onDelete: SetNull)
+  sourceIp       String?
+  eventType      String
+  payload        Json?
+  riskScore      Float    @default(0)
+  isAnomaly      Boolean  @default(false)
+  ingestedVia    String   @default("online") // online | offline-sync
+  occurredAt     DateTime @default(now())
+  createdAt      DateTime @default(now())
+
+  alerts Alert[]
+
+  @@index([eventType])
+  @@index([occurredAt])
+  @@index([assetId])
+}
+
+model Alert {
+  id           String      @id @default(uuid())
+  title        String
+  description  String
+  severity     Severity
+  status       AlertStatus @default(OPEN)
+  ruleId       String?
+  riskScore    Float       @default(0)
+  assetId      String?
+  asset        Asset?      @relation(fields: [assetId], references: [id], onDelete: SetNull)
+  eventId      String?
+  event        Event?      @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  assignedToId String?
+  assignedTo   User?       @relation("AssignedAlerts", fields: [assignedToId], references: [id], onDelete: SetNull)
+  incidentId   String?
+  incident     Incident?   @relation(fields: [incidentId], references: [id], onDelete: SetNull)
+  createdAt    DateTime    @default(now())
+  resolvedAt   DateTime?
+
+  @@index([severity])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model Incident {
+  id          String         @id @default(uuid())
+  title       String
+  summary     String
+  status      IncidentStatus @default(OPEN)
+  severity    Severity
+  createdById String?
+  createdBy   User?          @relation("CreatedIncidents", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  closedAt    DateTime?
+
+  alerts Alert[]
+  notes  IncidentNote[]
+}
+
+model IncidentNote {
+  id         String   @id @default(uuid())
+  incidentId String
+  incident   Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  authorId   String?
+  author     User?    @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  body       String
+  createdAt  DateTime @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String
+  target    String?
+  metadata  Json?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([userId])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  message   String
+  severity  Severity @default(LOW)
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, read])
+}
+
+model ThreatIntel {
+  id         String   @id @default(uuid())
+  indicator  String   @unique // IP, domain, hash
+  type       String   // ip | domain | hash | pattern
+  reason     String
+  severity   Severity @default(MEDIUM)
+  source     String   @default("internal")
+  createdAt  DateTime @default(now())
+}

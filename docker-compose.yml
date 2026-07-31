@@ -1,0 +1,65 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: sentinel
+      POSTGRES_PASSWORD: sentinel
+      POSTGRES_DB: sentinel_africa
+    ports:
+      - '5432:5432'
+    volumes:
+      - sentinel_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U sentinel']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  server:
+    build: ./server
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DATABASE_URL: postgresql://sentinel:sentinel@postgres:5432/sentinel_africa?schema=public
+      JWT_ACCESS_SECRET: change-me-access-secret
+      JWT_REFRESH_SECRET: change-me-refresh-secret
+      JWT_ACCESS_EXPIRES_IN: 15m
+      JWT_REFRESH_EXPIRES_IN: 7d
+      CLIENT_ORIGIN: http://localhost:5173
+      AGENT_API_KEYS: dev-agent-key-1
+    ports:
+      - '4000:4000'
+
+  client:
+    build:
+      context: ./client
+      args:
+        VITE_API_URL: http://localhost:4000
+    restart: unless-stopped
+    depends_on:
+      - server
+    ports:
+      - '5173:80'
+
+  agent:
+    build: ./agent
+    restart: unless-stopped
+    depends_on:
+      - server
+    environment:
+      SERVER_URL: http://server:4000
+      AGENT_API_KEY: dev-agent-key-1
+      COLLECT_INTERVAL_MS: 4000
+      SYNC_INTERVAL_MS: 10000
+      QUEUE_FILE: /data/queue.jsonl
+    volumes:
+      - sentinel_agent_data:/data
+
+volumes:
+  sentinel_pg_data:
+  sentinel_agent_data:
